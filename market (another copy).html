@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport"    content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="">
+	<meta name="author"      content="Sergey Pozhilov (GetTemplate.com)">
+	
+	<title>CHAT-UI</title>
+
+	<link rel="shortcut icon" href="assets/images/gt_favicon.png">
+	
+	<link rel="stylesheet" media="screen" href="http://fonts.googleapis.com/css?family=Open+Sans:300,400,700">
+	<link rel="stylesheet" href="assets/css/bootstrap.min.css">
+	<link rel="stylesheet" href="assets/css/font-awesome.min.css">
+
+	<!-- Custom styles for our template -->
+	<link rel="stylesheet" href="assets/css/bootstrap-theme.css" media="screen" >
+	<link rel="stylesheet" href="assets/css/main.css">
+
+	<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!--[if lt IE 9]>
+	<script src="assets/js/html5shiv.js"></script>
+	<script src="assets/js/respond.min.js"></script>
+	<![endif]-->
+</head>
+
+<body>
+
+	<!-- Fixed navbar -->
+	<div class="navbar navbar-inverse navbar-fixed-top headroom" >
+		<div class="container">
+			<div class="navbar-header">
+				<!-- Button for smallest screens -->
+				<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse"><span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span> </button>
+				<a class="navbar-brand" href="index.html"><img src="assets/images/logo.png" style="height: 55px;"  alt="Progressus HTML5 template"></a>
+			</div>
+			<div class="navbar-collapse collapse">
+				<ul class="nav navbar-nav pull-right">
+					<li><a href="index.html">Beranda</a></li>
+					<li class="active"><a href="chat.html">Pesan</a></li>
+					<li class="active"><a href="market.html">Market Place</a></li>
+					<li class="active"><a href="info.html">Informasi</a></li>
+					<li class="active"><a href="teknisi.html">Teknisi</a></li>
+					<li><a href="contact.html">Contact</a></li>
+					<li><a class="btn" href="signin.html">SIGN IN / SIGN UP</a></li>
+				</ul>
+			</div><!--/.nav-collapse -->
+		</div>
+	</div> 
+	<!-- /.navbar -->
+
+	<header id="head" class="secondary"></header>
+
+	<!-- container -->
+	<div class="container">
+
+		 <div class="container">
+            <div class="form-group">
+                <label for="txtConvHistory">Conversation:</label>
+                <textarea id="txtConvHistory" class="form-control" rows="10"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="txtQuestion">Say:</label>
+                <div class="form-check form-check-inline float-right">
+                    <input type="checkbox" id="chkUseSpeechSyn" class="form-check-input" checked="checked" />
+                    <label for="chkUseSpeechSyn" class="form-check-label">Text-to-Speech</label>
+                </div>
+                <div class="form-check form-check-inline float-right">
+                    <input type="checkbox" id="chkUseSpeechRec" class="form-check-input" />
+                    <label for="chkUseSpeechRec" class="form-check-label">Speech-to-Text</label>
+                </div>
+                
+                <input type="text" id="txtQuestion" class="form-control pad" />
+                <button class="btn btn-primary btn-sm btn-block mt-2" id="btnSay">Say</button>
+        </div>
+
+        <script type="text/javascript">
+            function say(){
+                var question = $("#txtQuestion").val();
+
+                $.ajax({
+					url: "../chat/" + question,
+                    type: "GET",
+                    success: function(result) {
+                        result = processAnswer(result)
+                        var txtConvHistory = $("#txtConvHistory");
+                        var convHistory = txtConvHistory.val();
+                        convHistory = convHistory + "You: " + question;
+                        convHistory = convHistory + "\n";
+                        convHistory = convHistory + "ChatBot: " + result;
+                        convHistory = convHistory + "\n\n";
+                        txtConvHistory.val(convHistory);
+                        txtConvHistory.scrollTop(txtConvHistory[0].scrollHeight);
+
+                        $("#txtQuestion").val("");
+                        
+                        var speechSyn = $("#chkUseSpeechSyn").is(":checked");
+                        if (speechSyn) {
+                            speak(result);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        alert(status + ": " + error);
+                    }
+                });
+            }
+
+            function processAnswer(answer) {
+                answer = answer.replace(/"/g, '').trim();
+                answer = answer.replace("<OUT>", "umm");
+                return answer;
+            }
+
+            $("#btnSay").click(function() {
+                say();
+            })
+            $("#txtQuestion").keypress(function(e) {
+                var keycode = (e.keyCode ? e.keyCode : e.which);
+                if (keycode == '13'){
+                    say();
+                }
+            })
+            $("#chkUseSpeechRec").change(function(){
+                startButton("txtQuestion", this.checked);
+            });
+        </script>
+
+        <script type="text/javascript">
+            var eventControl;
+            var recognition = new webkitSpeechRecognition();
+            var final_transcript = '';
+            var recognizing = false;
+            var ignore_onend;
+    
+            var first_char = /\S/;
+            function capitalize(s) {
+                return s.replace(first_char, function (m) { return m.toUpperCase(); });
+            }
+    
+            function startButton(control, state) {
+                if (recognizing && !state) {
+                    recognition.stop();
+                } else if (!recognizing && state) {
+                    eventControl = $("#" + control);
+                    recognition.lang = 'en-US';
+                    recognition.start();
+        
+                    ignore_onend = false;
+                }
+            }
+    
+            {
+                recognition.continuous = true; //Set to false if a pause is needed to stop recognition
+                recognition.interimResults = true;
+                recognition.onstart = function (event) {
+                    recognizing = true;
+                };
+    
+                recognition.onresult = function (event) {
+                    var interim_transcript = final_transcript.toString()
+                    for (var i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            final_transcript += event.results[i][0].transcript;
+                            final_transcript = capitalize(final_transcript);
+                            if (eventControl) {
+                                eventControl.val(final_transcript);
+                                final_transcript = '';
+                                say();
+                            }
+    
+                        } else {
+                            interim_transcript += event.results[i][0].transcript;
+                            if (eventControl) {
+                                eventControl.val(interim_transcript);
+                            }
+                        }
+                    }
+                };
+    
+                recognition.onerror = function (event) {
+                    if (event.error == 'no-speech') {
+                        ignore_onend = true;
+                    }
+                    if (event.error == 'audio-capture') {
+                        ignore_onend = true;
+                    }
+                    if (event.error == 'not-allowed') {
+                        ignore_onend = true;
+                    }
+                };
+    
+                recognition.onend = function (event) {
+                    recognizing = false;
+                    if (ignore_onend) {
+                        return;
+                    }
+                    if (!final_transcript) {
+                        return;
+                    }
+                };
+    
+            }
+    
+        </script>
+
+        <script type="text/javascript">
+            var synth = window.speechSynthesis;
+
+            function speak(txt) {
+                var utterance = new SpeechSynthesisUtterance(txt);
+                utterance.onstart = function(event) {
+                    var speechRec = $("#chkUseSpeechRec").is(":checked");
+                    if (speechRec) {
+                        console.info("stopping rec...");
+                        startButton("txtQuestion", false);
+                    }
+                }
+                utterance.onend = function(event) {
+                    var speechRec = $("#chkUseSpeechRec").is(":checked");
+                    if (speechRec) {
+                        console.info("starting rec...");
+                        startButton("txtQuestion", true);
+                    }
+                }
+
+                var voices = synth.getVoices();
+                utterance.voice = voices[4];
+
+                synth.speak(utterance);
+            }
+
+        </script>
+
+			
+			<!-- /Sidebar -->
+		</div>
+	</div>
+
+
+
+
+
+
+
+		
+	 	<div class="row">
+		
+			<!-- /Sidebar -->
+		</div>
+	</div>	<!-- /container -->
+	
+
+	<footer id="footer" class="top-space">
+
+		<div class="footer1">
+			<div class="container">
+				<div class="row">
+					
+					<div class="col-md-3 widget">
+						<h3 class="widget-title">Contact</h3>
+						<div class="widget-body">
+							<p>+234 23 9873237<br>
+								<a href="mailto:#">some.email@somewhere.com</a><br>
+								<br>
+								234 Hidden Pond Road, Ashland City, TN 37015
+							</p>	
+						</div>
+					</div>
+
+					<div class="col-md-3 widget">
+						<h3 class="widget-title">Follow me</h3>
+						<div class="widget-body">
+							<p class="follow-me-icons clearfix">
+								<a href=""><i class="fa fa-twitter fa-2"></i></a>
+								<a href=""><i class="fa fa-dribbble fa-2"></i></a>
+								<a href=""><i class="fa fa-github fa-2"></i></a>
+								<a href=""><i class="fa fa-facebook fa-2"></i></a>
+							</p>	
+						</div>
+					</div>
+
+					<div class="col-md-6 widget">
+						<h3 class="widget-title">Text widget</h3>
+						<div class="widget-body">
+							<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Excepturi, dolores, quibusdam architecto voluptatem amet fugiat nesciunt placeat provident cumque accusamus itaque voluptate modi quidem dolore optio velit hic iusto vero praesentium repellat commodi ad id expedita cupiditate repellendus possimus unde?</p>
+							<p>Eius consequatur nihil quibusdam! Laborum, rerum, quis, inventore ipsa autem repellat provident assumenda labore soluta minima alias temporibus facere distinctio quas adipisci nam sunt explicabo officia tenetur at ea quos doloribus dolorum voluptate reprehenderit architecto sint libero illo et hic.</p>
+						</div>
+					</div>
+
+				</div> <!-- /row of widgets -->
+			</div>
+		</div>
+
+		<div class="footer2">
+			<div class="container">
+				<div class="row">
+					
+					<div class="col-md-6 widget">
+						<div class="widget-body">
+							<p class="simplenav">
+								<a href="#">Home</a> | 
+								<a href="about.html">About</a> |
+								<a href="sidebar-right.html">Sidebar</a> |
+								<a href="contact.html">Contact</a> |
+								<b><a href="signup.html">Sign up</a></b>
+							</p>
+						</div>
+					</div>
+
+					<div class="col-md-6 widget">
+						<div class="widget-body">
+							<p class="text-right">
+								Copyright &copy; 2014, Your name. Designed by <a href="http://gettemplate.com/" rel="designer">gettemplate</a> 
+							</p>
+						</div>
+					</div>
+
+				</div> <!-- /row of widgets -->
+			</div>
+		</div>
+	</footer>	
+		
+
+
+
+
+	<!-- JavaScript libs are placed at the end of the document so the pages load faster -->
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+	<script src="http://netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+	<script src="assets/js/headroom.min.js"></script>
+	<script src="assets/js/jQuery.headroom.min.js"></script>
+	<script src="assets/js/template.js"></script>
+</body>
+</html>
